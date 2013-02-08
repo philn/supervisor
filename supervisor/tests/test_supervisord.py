@@ -390,6 +390,7 @@ class SupervisordTests(unittest.TestCase):
                 'stopasgroup': False,
                 'killasgroup': False,
                 'exitcodes': (0,), 'environment': None, 'serverurl': None,
+                'cgroups': None
             }
             result.update(params)
             return ProcessConfig(options, **result)

@@ -299,7 +299,18 @@ class Subprocess(object):
             self._prepare_child_fds()
             # sending to fd 2 will put this output in the stderr log
 
-            # set user
+            # Attach the child to cgroups before dropping privileges
+            # (may need to be root to do this).
+            msg = self.attach_cgroups()
+            if msg:
+                cgroups = self.config.cgroups
+                s = 'supervisor: error attaching process to cgroups %s ' % cgroups
+                options.write(2, s)
+                options.write(2, "(%s)\n" % msg)
+                # It would be great to actually affect parent state here
+                # (i.e. the parent should know that we haven't actually
+                # attached), but this only logs.
+
             setuid_msg = self.set_uid()
             if setuid_msg:
                 uid = self.config.uid
@@ -638,6 +649,24 @@ class Subprocess(object):
     def __eq__(self, other):
         # sort by priority
         return self.config.priority == other.config.priority
+
+    def attach_cgroups(self):
+        # Doesn't undo in the event of partial failure (e.g. attach succeeds
+        # for one but not the other).
+        for cgroup in self.config.cgroups:
+            tasks_path = os.path.join(cgroup, "tasks")
+            if not os.path.isfile(tasks_path):
+                return "Can't find cgroup path %s" % tasks_path
+            try:
+                tasks = open(tasks_path, "w")
+                try:
+                    # We assume that we're only called during process creation,
+                    # so we're single-threaded and can write just our PID.
+                    tasks.write(str(self.config.options.get_pid()))
+                finally:
+                    tasks.close()
+            except IOError:
+                return "Couldn't attach process to cgroup %s" % tasks_path
 
     def __repr__(self):
         # repr can't return anything other than a native string,

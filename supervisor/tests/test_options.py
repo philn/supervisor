@@ -672,6 +672,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         numprocs_start = 1
         command = /bin/cat
         directory = /some/path/foo_%%(process_num)02d
+        cgroups=/path/one,/path/two
         """ % {'tempdir':tempfile.gettempdir()})
 
         from supervisor import datatypes
@@ -731,6 +732,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(proc1.directory, '/tmp')
         self.assertEqual(proc1.umask, 2)
         self.assertEqual(proc1.environment, dict(FAKE_ENV_VAR='/some/path'))
+        self.assertEqual(proc1.cgroups, [])
 
         cat2 = options.process_group_configs[1]
         self.assertEqual(cat2.name, 'cat2')
@@ -752,6 +754,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(proc2.stdout_logfile_backups, 2)
         self.assertEqual(proc2.exitcodes, [0])
         self.assertEqual(proc2.directory, None)
+        self.assertEqual(proc2.cgroups, [])
 
         cat3 = options.process_group_configs[2]
         self.assertEqual(cat3.name, 'cat3')
@@ -773,6 +776,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(proc3.stopsignal, signal.SIGTERM)
         self.assertEqual(proc3.stopasgroup, True)
         self.assertEqual(proc3.killasgroup, True)
+        self.assertEqual(proc3.cgroups, [])
 
         cat4 = options.process_group_configs[3]
         self.assertEqual(cat4.name, 'cat4')
@@ -796,6 +800,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(proc4_a.stopasgroup, False)
         self.assertEqual(proc4_a.killasgroup, False)
         self.assertEqual(proc4_a.directory, None)
+        self.assertEqual(proc4_a.cgroups, ["/path/one", "/path/two"])
 
         proc4_b = cat4.process_configs[1]
         self.assertEqual(proc4_b.name, 'fleeb_1')
@@ -813,7 +818,9 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(proc4_b.stopsignal, signal.SIGTERM)
         self.assertEqual(proc4_b.stopasgroup, False)
         self.assertEqual(proc4_b.killasgroup, False)
+
         self.assertEqual(proc4_b.directory, None)
+        self.assertEqual(proc4_b.cgroups, ["/path/one", "/path/two"])
 
         cat5 = options.process_group_configs[4]
         self.assertEqual(cat5.name, 'cat5')
@@ -1709,6 +1716,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         environment = KEY1=val1,KEY2=val2,KEY3=%(process_num)s
         numprocs = 2
         process_name = %(group_name)s_%(program_name)s_%(process_num)02d
+        cgroups = foo,bar
         """)
         from supervisor.options import UnhosedConfigParser
         config = UnhosedConfigParser()
@@ -1735,6 +1743,7 @@ class ServerOptionsTests(unittest.TestCase, IncludeTestsMixin):
         self.assertEqual(pconfig.redirect_stderr, False)
         self.assertEqual(pconfig.environment,
                          {'KEY1':'val1', 'KEY2':'val2', 'KEY3':'0'})
+        self.assertEqual(pconfig.cgroups, ["foo", "bar"])
 
     def test_processes_from_section_host_node_name_expansion(self):
         instance = self._makeOne()
@@ -3404,7 +3413,7 @@ class ProcessConfigTests(unittest.TestCase):
                      'stderr_events_enabled', 'stderr_syslog',
                      'stopsignal', 'stopwaitsecs', 'stopasgroup',
                      'killasgroup', 'exitcodes', 'redirect_stderr',
-                     'environment'):
+                     'environment', 'cgroups'):
             defaults[name] = name
         for name in ('stdout_logfile_backups', 'stdout_logfile_maxbytes',
                      'stderr_logfile_backups', 'stderr_logfile_maxbytes'):
@@ -3550,7 +3559,7 @@ class FastCGIProcessConfigTests(unittest.TestCase):
                      'stderr_events_enabled', 'stderr_syslog',
                      'stopsignal', 'stopwaitsecs', 'stopasgroup',
                      'killasgroup', 'exitcodes', 'redirect_stderr',
-                     'environment'):
+                     'environment', 'cgroups'):
             defaults[name] = name
         for name in ('stdout_logfile_backups', 'stdout_logfile_maxbytes',
                      'stderr_logfile_backups', 'stderr_logfile_maxbytes'):
